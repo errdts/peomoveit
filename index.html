@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MisOr Roads Map</title>
+    <title>Misamis Oriental Provincial Road Network</title>
     <!-- Tailwind CSS CDN for basic styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Define custom font using @import or @font-face */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
 
         body {
@@ -16,117 +15,124 @@
             padding: 0;
             display: flex;
             flex-direction: column;
-            min-height: 100vh; /* Ensure body takes full viewport height */
-            overflow-x: hidden; /* Prevent horizontal scrolling */
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
         }
 
         #map {
-            height: 70vh; /* Make map responsive and take 70% of viewport height */
+            flex-grow: 1; 
             width: 100%;
-            border-radius: 0.5rem; /* Rounded corners */
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+            height: 100%;
         }
 
-        /* Ensure Leaflet's default styles are loaded */
+        /* Leaflet CSS */
         @import url('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
 
-        /* Style for the base map controls */
-        .basemap-controls {
-            background-color: #ffffff;
-            padding: 0.75rem 1rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 1rem;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 1rem;
-            align-items: center;
-            justify-content: center;
+        /* Floating Controls Style */
+        .map-controls-overlay {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px 16px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
         }
 
-        .basemap-controls label {
+        .app-header {
+            background: #2563eb;
+            color: white;
+            padding: 0.75rem 1.5rem;
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            cursor: pointer;
-            font-weight: 500;
-            color: #4B5563; /* Gray-700 */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            z-index: 1001;
         }
 
-        .basemap-controls input[type="radio"] {
-            margin-right: 0.5rem;
-            accent-color: #2563EB; /* Blue-600 */
+        /* Custom Popup Styling */
+        .leaflet-popup-content-wrapper {
+            border-radius: 8px;
+            padding: 5px;
+        }
+        .leaflet-popup-content {
+            font-size: 14px;
+            line-height: 1.5;
         }
     </style>
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 </head>
-<body class="bg-gray-100 flex items-center justify-center p-4 sm:p-6 lg:p-8">
-    <div class="container mx-auto p-4 bg-white rounded-lg shadow-xl max-w-4xl w-full">
-        <h1 class="text-3xl sm:text-4xl font-bold text-center text-gray-800 mb-6 rounded-lg p-2 bg-blue-100">
-            Misamis Oriental Provincial Roads Map
-        </h1>
+<body class="bg-gray-100">
 
-        <!-- Base map selection controls -->
-        <div class="basemap-controls">
-            <h3 class="text-lg font-semibold text-gray-700">Base Map:</h3>
-            <label>
-                <input type="radio" name="basemap" value="osm" checked>
-                OpenStreetMap
-            </label>
-            <label>
-                <input type="radio" name="basemap" value="satellite">
-                Satellite
-            </label>
+    <!-- Header -->
+    <header class="app-header">
+        <div class="flex items-center gap-2">
+            <span class="text-2xl">🛣️</span>
+            <h1 class="text-lg sm:text-xl font-bold tracking-tight">Misamis Oriental Provincial Road Network</h1>
+        </div>
+        <div class="hidden md:block text-sm font-medium bg-blue-700 px-3 py-1 rounded-full">
+            Live Interactive View
+        </div>
+    </header>
+
+    <!-- Map Area -->
+    <div class="relative flex-grow flex flex-col overflow-hidden">
+        
+        <!-- Floating Base Map Switcher -->
+        <div class="map-controls-overlay">
+            <h3 class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Layer Gallery</h3>
+            <div class="flex flex-col gap-2">
+                <label class="flex items-center text-sm font-medium text-gray-700 cursor-pointer group">
+                    <input type="radio" name="basemap" value="osm" checked class="w-4 h-4 mr-3 accent-blue-600">
+                    <span class="group-hover:text-blue-600 transition-colors">Street Map</span>
+                </label>
+                <label class="flex items-center text-sm font-medium text-gray-700 cursor-pointer group">
+                    <input type="radio" name="basemap" value="satellite" class="w-4 h-4 mr-3 accent-blue-600">
+                    <span class="group-hover:text-blue-600 transition-colors">Satellite View</span>
+                </label>
+            </div>
+            <div class="mt-4 pt-3 border-t border-gray-100">
+                <p class="text-[10px] text-gray-400 leading-tight">Click on any road line to view its official designation.</p>
+            </div>
         </div>
 
-        <div id="map" class="mb-8"></div>
-
-        <div class="info-panel bg-blue-50 p-4 rounded-lg shadow-md border border-blue-200">
-            <h2 class="text-xl sm:text-2xl font-semibold text-gray-700 mb-3">Map Information:</h2>
-            <p class="text-gray-600 mb-2">
-                This map displays the various provincial roads in Misamis Oriental. Click on
-                features to see more details.
-            </p>
-            <ul class="list-disc list-inside text-gray-600">
-                <li><span class="font-medium text-red-600">Red markers</span>: Project Locations (Points)</li>
-                <li><span class="font-medium text-purple-600">Dynamically colored lines</span>: Provincial Roads (Lines), color based on 'R_NAME' (with increased click sensitivity)</li>
-                <li><span class="font-medium text-green-600">Green areas</span>: Provincial Areas (Polygons)</li>
-            </ul>
-        </div>
+        <!-- The Map Container -->
+        <div id="map"></div>
     </div>
 
     <!-- Leaflet JavaScript -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        // Ensure the entire document is loaded before trying to access elements
         window.onload = function() {
-            // Initialize the map and set its view to a default geographical coordinate and zoom level
-            // You might want to adjust these coordinates to be central to your project areas
-            const map = L.map('map').setView([0, 0], 2); // Default to world view, zoom level 2
+            // Setup Map (Defaulting to Misamis Oriental area coordinates)
+            const map = L.map('map', {
+                zoomControl: true,
+                attributionControl: true
+            }).setView([8.5, 124.5], 9);
 
-            // --- Define Base Map Layers ---
+            // Layer Definitions
             const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
-                attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                attribution: '&copy; OpenStreetMap contributors'
             });
 
-            // Esri World Imagery is a good, free satellite option for web maps
             const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                 maxZoom: 19,
                 attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
             });
 
-            // Add the default (OpenStreetMap) layer to the map
             let currentBaseMapLayer = osmLayer.addTo(map);
 
-            // --- Base Map Controls Event Listener ---
+            // Basemap Switching Logic
             document.querySelectorAll('input[name="basemap"]').forEach(radio => {
                 radio.addEventListener('change', function() {
-                    // Remove the current base map layer from the map
                     map.removeLayer(currentBaseMapLayer);
-
-                    // Add the newly selected base map layer
                     if (this.value === 'osm') {
                         currentBaseMapLayer = osmLayer.addTo(map);
                     } else if (this.value === 'satellite') {
@@ -135,132 +141,81 @@
                 });
             });
 
-            // Function to load GeoJSON data
+            // Core GeoJSON Loading Function
             async function loadGeoJSON(url, styleFn, popupFn) {
                 try {
                     const response = await fetch(url);
+                    if (!response.ok) throw new Error('Network response was not ok');
                     const data = await response.json();
                     
-                    // Create the GeoJSON layer for the visible features
                     const geoJsonLayer = L.geoJson(data, {
-                        style: styleFn, // This will be for the VISIBLE line's style
-                        pointToLayer: function (feature, latlng) {
-                            return L.marker(latlng);
-                        },
+                        style: styleFn,
                         onEachFeature: function (feature, layer) {
-                            // Bind the popup to the original layer first
                             if (feature.properties && popupFn) {
                                 layer.bindPopup(popupFn(feature.properties));
                             }
 
-                            // If it's a LineString, create a separate, wider, transparent layer for click detection
+                            // High-sensitivity click layer for roads
                             if (feature.geometry.type === "LineString" || feature.geometry.type === "MultiLineString") {
-                                const widerInvisibleLayer = L.geoJson(feature, {
+                                const sensitivityLayer = L.geoJson(feature, {
                                     style: {
-                                        weight: 15,          // This defines the click sensitivity area (in pixels)
-                                        opacity: 0,          // Make it completely transparent
-                                        interactive: true    // Crucial for capturing click events
+                                        weight: 24, // High sensitivity for touch/mouse
+                                        opacity: 0,
+                                        interactive: true
                                     }
-                                }).addTo(map); // Add the invisible layer to the map
+                                }).addTo(map);
 
-                                // When the wider invisible layer is clicked, open the popup of the *original visible* layer
-                                widerInvisibleLayer.on('click', function(e) {
-                                    // Open the popup at the click location, using the popup bound to the original layer
+                                sensitivityLayer.on('click', function(e) {
                                     layer.openPopup(e.latlng);
+                                });
+                                
+                                // Visual hover effect
+                                sensitivityLayer.on('mouseover', function() {
+                                    layer.setStyle({ weight: 6, opacity: 1 });
+                                });
+                                sensitivityLayer.on('mouseout', function() {
+                                    layer.setStyle(styleFn(feature));
                                 });
                             }
                         }
                     }).addTo(map);
 
-                    // Zoom to the bounds of the loaded data for a better initial view
+                    // Fit map to road network bounds
                     map.fitBounds(geoJsonLayer.getBounds());
                 } catch (error) {
-                    console.error(`Error loading GeoJSON from ${url}:`, error);
-                    // Display a user-friendly message
-                    const infoPanel = document.querySelector('.info-panel');
-                    if (infoPanel) {
-                        const errorMessage = document.createElement('p');
-                        errorMessage.className = 'text-red-500 font-semibold mt-2';
-                        errorMessage.textContent = `Failed to load map data from ${url}. Please ensure the GeoJSON file exists and is valid.`;
-                        infoPanel.appendChild(errorMessage);
-                    }
+                    console.error(`Error loading GeoJSON (${url}):`, error);
                 }
             }
 
-            // --- Styling Functions ---
-
-            // Style for provincial areas (polygons)
-            function areaStyle(feature) {
-                return {
-                    fillColor: '#8BC34A', // Greenish color
-                    weight: 2,
-                    opacity: 0.8,
-                    color: '#4CAF50', // Darker green border
-                    fillOpacity: 0.5
-                };
-            }
-
-            // Function to generate a consistent HSL color from a string
-            function stringToHslColor(str, s, l) {
-                let hash = 0;
-                for (let i = 0; i < str.length; i++) {
-                    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-                }
-                const h = hash % 360;
-                return 'hsl(' + h + ', ' + s + '%, ' + l + '%)';
-            }
-
-            // Style for provincial roads (lines) - This is for the VISIBLE line
+            // Road Styling (Consistent color based on road name)
             function roadStyle(feature) {
-                const roadName = feature.properties.R_NAME || 'Unknown Road';
-                const lineColor = stringToHslColor(roadName, 70, 50); 
-
+                const roadName = feature.properties.R_NAME || 'Unknown';
+                let hash = 0;
+                for (let i = 0; i < roadName.length; i++) {
+                    hash = roadName.charCodeAt(i) + ((hash << 5) - hash);
+                }
+                const h = Math.abs(hash) % 360;
+                
                 return {
-                    color: lineColor,
-                    weight: 3, // This is the visual thickness of the line
-                    opacity: 0.7
+                    color: `hsl(${h}, 80%, 45%)`,
+                    weight: 3.5,
+                    opacity: 0.85,
+                    lineJoin: 'round'
                 };
             }
 
-            // Style for project locations (points) - default marker style is used, but we can customize here
-            // For points, pointToLayer in loadGeoJSON handles marker creation.
-            // If you wanted custom icons, you'd define them here and use L.icon
-
-            // --- Popup Content Functions ---
-
-            // Popup for provincial areas
-            function areaPopup(properties) {
-                let popupContent = '<b>Provincial Area</b><br>';
-                for (const key in properties) {
-                    if (Object.hasOwnProperty.call(properties, key)) {
-                        popupContent += `<b>${key}:</b> ${properties[key]}<br>`;
-                    }
-                }
-                return popupContent;
-            }
-
-            // Popup for provincial roads - Modified to show only R_NAME
+            // Popup Formatting
             function roadPopup(properties) {
-                const roadName = properties.R_NAME || 'Not Available';
-                return `<b>Road Name:</b> ${roadName}`;
+                return `
+                    <div class="p-1">
+                        <strong class="text-blue-600 block mb-1">Road Information</strong>
+                        <span class="text-gray-700">Name: ${properties.R_NAME || 'Unnamed Road'}</span>
+                    </div>
+                `;
             }
 
-            // Popup for project locations
-            function projectPopup(properties) {
-                let popupContent = '<b>Project Location</b><br>';
-                for (const key in properties) {
-                    if (Object.hasOwnProperty.call(properties, key)) {
-                        popupContent += `<b>${key}:</b> ${properties[key]}<br>`;
-                    }
-                }
-                return popupContent;
-            }
-
-            // --- Load the GeoJSON files ---
-            // Make sure these filenames match the ones you exported from QGIS
-            // loadGeoJSON('provinces.geojson', areaStyle, areaPopup); // Temporarily commented out
+            // Execute Data Load
             loadGeoJSON('roads.geojson', roadStyle, roadPopup);
-            // loadGeoJSON('projects.geojson', null, projectPopup); // Temporarily commented out
         };
     </script>
 </body>
