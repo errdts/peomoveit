@@ -31,7 +31,7 @@
         /* Leaflet CSS */
         @import url('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
 
-        /* Floating Controls Style (Relocated to Upper Left) */
+        /* Floating Controls Style */
         .map-controls-overlay {
             position: absolute;
             top: 20px; 
@@ -43,7 +43,7 @@
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
             backdrop-filter: blur(8px);
             border: 1px solid rgba(255, 255, 255, 0.5);
-            min-width: 180px;
+            min-width: 200px;
         }
 
         .app-header {
@@ -60,12 +60,12 @@
         /* Custom Popup Styling */
         .leaflet-popup-content-wrapper {
             border-radius: 8px;
-            padding: 0px; /* Minimal padding */
+            padding: 0px; 
         }
         .leaflet-popup-content {
             font-size: 14px;
-            margin: 8px; /* Control margin inside popup */
-            line-height: 1.0; /* Tightest line height */
+            margin: 8px; 
+            line-height: 1.0; 
         }
     </style>
     <!-- Leaflet CSS -->
@@ -87,10 +87,11 @@
     <!-- Map Area -->
     <div class="relative flex-grow flex flex-col overflow-hidden">
         
-        <!-- Floating Base Map Switcher (Upper Left) -->
+        <!-- Floating Base Map Switcher -->
         <div class="map-controls-overlay">
             <h3 class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Layer Gallery</h3>
-            <div class="flex flex-col gap-2">
+            
+            <div class="flex flex-col gap-2 mb-4">
                 <label class="flex items-center text-sm font-medium text-gray-700 cursor-pointer group">
                     <input type="radio" name="basemap" value="osm" checked class="w-4 h-4 mr-3 accent-green-600">
                     <span class="group-hover:text-green-700 transition-colors">Street Map</span>
@@ -98,6 +99,16 @@
                 <label class="flex items-center text-sm font-medium text-gray-700 cursor-pointer group">
                     <input type="radio" name="basemap" value="satellite" class="w-4 h-4 mr-3 accent-green-600">
                     <span class="group-hover:text-green-700 transition-colors">Satellite View</span>
+                </label>
+            </div>
+
+            <hr class="border-gray-200 mb-3">
+            
+            <h3 class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Filters</h3>
+            <div class="flex flex-col gap-2">
+                <label class="flex items-center text-sm font-medium text-gray-700 cursor-pointer group">
+                    <input type="checkbox" id="coreRoadsToggle" class="w-4 h-4 mr-3 accent-green-600">
+                    <span class="group-hover:text-green-700 transition-colors">Show Core Roads</span>
                 </label>
             </div>
         </div>
@@ -116,6 +127,9 @@
                 zoomControl: true,
                 attributionControl: true
             }).setView([8.5, 124.5], 9);
+
+            let geoJsonLayer; // To store the road layer globally
+            let allRoadData = null; // To store raw GeoJSON data
 
             // Define Custom Icon using peo.png
             const customIcon = L.icon({
@@ -150,26 +164,41 @@
                 });
             });
 
-            // Core GeoJSON Loading Function
-            async function loadGeoJSON(url, styleFn, popupFn) {
+            // Core GeoJSON Loading and Filtering Function
+            async function loadAndDisplayRoads(showCoreOnly = false) {
                 try {
-                    const response = await fetch(url);
-                    if (!response.ok) throw new Error('Network response was not ok');
-                    const data = await response.json();
-                    
-                    const geoJsonLayer = L.geoJson(data, {
-                        style: styleFn,
-                        pointToLayer: function (feature, latlng) {
-                            return L.marker(latlng, { icon: customIcon });
-                        },
-                        onEachFeature: function (feature, layer) {
-                            if (feature.properties && popupFn) {
-                                layer.bindPopup(popupFn(feature.properties));
+                    // Fetch data if not already cached
+                    if (!allRoadData) {
+                        const response = await fetch('roads.geojson');
+                        if (!response.ok) throw new Error('Network response was not ok');
+                        allRoadData = await response.json();
+                    }
+
+                    // Remove existing layer if it exists
+                    if (geoJsonLayer) {
+                        map.eachLayer(layer => {
+                            // Cleanup both the visual layer and the hidden sensitivity layers
+                            if (layer.options && (layer.options.sensitivity === true || layer === geoJsonLayer)) {
+                                map.removeLayer(layer);
                             }
+                        });
+                    }
+
+                    // Create filtered layer
+                    geoJsonLayer = L.geoJson(allRoadData, {
+                        filter: function(feature) {
+                            if (!showCoreOnly) return true;
+                            // Filter by R_CORE attribute
+                            return feature.properties && feature.properties.R_CORE === "Yes";
+                        },
+                        style: roadStyle,
+                        onEachFeature: function (feature, layer) {
+                            layer.bindPopup(roadPopup(feature.properties));
 
                             // High-sensitivity click layer for roads
                             if (feature.geometry.type === "LineString" || feature.geometry.type === "MultiLineString") {
                                 const sensitivityLayer = L.geoJson(feature, {
+                                    sensitivity: true, // Custom tag for cleanup
                                     style: {
                                         weight: 24, 
                                         opacity: 0,
@@ -185,17 +214,27 @@
                                     layer.setStyle({ weight: 6, opacity: 1 });
                                 });
                                 sensitivityLayer.on('mouseout', function() {
-                                    layer.setStyle(styleFn(feature));
+                                    layer.setStyle(roadStyle(feature));
                                 });
                             }
                         }
                     }).addTo(map);
 
-                    map.fitBounds(geoJsonLayer.getBounds());
+                    // Fit bounds only on initial load
+                    if (!geoJsonLayer._initialFit) {
+                        map.fitBounds(geoJsonLayer.getBounds());
+                        geoJsonLayer._initialFit = true;
+                    }
+
                 } catch (error) {
-                    console.error(`Error loading GeoJSON (${url}):`, error);
+                    console.error(`Error loading/filtering GeoJSON:`, error);
                 }
             }
+
+            // Filter Toggle Logic
+            document.getElementById('coreRoadsToggle').addEventListener('change', function() {
+                loadAndDisplayRoads(this.checked);
+            });
 
             // Road Styling (Shades of Green)
             function roadStyle(feature) {
@@ -216,7 +255,7 @@
                 };
             }
 
-            // Final Popup Formatting (Compressed)
+            // Popup Formatting
             function roadPopup(properties) {
                 const length = properties.R_LENGTH ? parseFloat(properties.R_LENGTH).toFixed(2) : '0.00';
                 return `
@@ -228,7 +267,8 @@
                 `;
             }
 
-            loadGeoJSON('roads.geojson', roadStyle, roadPopup);
+            // Initial Load
+            loadAndDisplayRoads(false);
         };
     </script>
 </body>
