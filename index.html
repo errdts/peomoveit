@@ -35,7 +35,8 @@
         .map-controls-overlay {
             position: absolute;
             top: 20px; 
-            left: 50px; 
+            /* Moved slightly right to avoid overlapping zoom buttons */
+            left: 55px; 
             z-index: 1000;
             background: rgba(255, 255, 255, 0.95);
             padding: 12px 16px;
@@ -43,7 +44,60 @@
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
             backdrop-filter: blur(8px);
             border: 1px solid rgba(255, 255, 255, 0.5);
-            min-width: 200px;
+            min-width: 220px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Mobile Collapsed State */
+        @media (max-width: 640px) {
+            .map-controls-overlay {
+                left: 55px; /* Ensure clearance on mobile as well */
+            }
+            .map-controls-overlay.collapsed {
+                width: 44px;
+                height: 44px;
+                min-width: 44px;
+                overflow: hidden;
+                padding: 0;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .map-controls-overlay.collapsed .content-wrapper {
+                display: none;
+            }
+            .map-controls-overlay .toggle-btn {
+                display: flex;
+            }
+        }
+
+        /* Desktop State */
+        @media (min-width: 641px) {
+            .map-controls-overlay {
+                left: 60px; /* More padding on desktop for a balanced look */
+            }
+            .map-controls-overlay .toggle-btn {
+                display: none;
+            }
+            .map-controls-overlay.collapsed {
+                /* Force expanded on desktop */
+                width: auto;
+                height: auto;
+                border-radius: 12px;
+            }
+            .map-controls-overlay.collapsed .content-wrapper {
+                display: block;
+            }
+        }
+
+        .toggle-btn {
+            width: 44px;
+            height: 44px;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 20px;
         }
 
         .app-header {
@@ -87,29 +141,41 @@
     <!-- Map Area -->
     <div class="relative flex-grow flex flex-col overflow-hidden">
         
-        <!-- Floating Base Map Switcher -->
-        <div class="map-controls-overlay">
-            <h3 class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Layer Gallery</h3>
-            
-            <div class="flex flex-col gap-2 mb-4">
-                <label class="flex items-center text-sm font-medium text-gray-700 cursor-pointer group">
-                    <input type="radio" name="basemap" value="osm" checked class="w-4 h-4 mr-3 accent-green-600">
-                    <span class="group-hover:text-green-700 transition-colors">Street Map</span>
-                </label>
-                <label class="flex items-center text-sm font-medium text-gray-700 cursor-pointer group">
-                    <input type="radio" name="basemap" value="satellite" class="w-4 h-4 mr-3 accent-green-600">
-                    <span class="group-hover:text-green-700 transition-colors">Satellite View</span>
-                </label>
+        <!-- Responsive Base Map Switcher -->
+        <div id="controlPanel" class="map-controls-overlay collapsed">
+            <!-- Toggle Button (visible on mobile only) -->
+            <div class="toggle-btn text-green-700" onclick="togglePanel()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
             </div>
 
-            <hr class="border-gray-200 mb-3">
-            
-            <h3 class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Filters</h3>
-            <div class="flex flex-col gap-2">
-                <label class="flex items-center text-sm font-medium text-gray-700 cursor-pointer group">
-                    <input type="checkbox" id="coreRoadsToggle" class="w-4 h-4 mr-3 accent-green-600">
-                    <span class="group-hover:text-green-700 transition-colors">Show Core Roads</span>
-                </label>
+            <div class="content-wrapper p-4 sm:p-0">
+                <div class="flex justify-between items-center mb-3 sm:hidden">
+                    <h3 class="text-xs font-bold uppercase tracking-widest text-gray-400">Map Settings</h3>
+                    <button onclick="togglePanel()" class="text-gray-400">✕</button>
+                </div>
+
+                <h3 class="hidden sm:block text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Layer Gallery</h3>
+                
+                <div class="flex flex-col gap-2 mb-4">
+                    <label class="flex items-center text-sm font-medium text-gray-700 cursor-pointer group">
+                        <input type="radio" name="basemap" value="osm" checked class="w-4 h-4 mr-3 accent-green-600">
+                        <span class="group-hover:text-green-700 transition-colors">Street Map</span>
+                    </label>
+                    <label class="flex items-center text-sm font-medium text-gray-700 cursor-pointer group">
+                        <input type="radio" name="basemap" value="satellite" class="w-4 h-4 mr-3 accent-green-600">
+                        <span class="group-hover:text-green-700 transition-colors">Satellite View</span>
+                    </label>
+                </div>
+
+                <hr class="border-gray-200 mb-3">
+                
+                <h3 class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Filters</h3>
+                <div class="flex flex-col gap-2">
+                    <label class="flex items-center text-sm font-medium text-gray-700 cursor-pointer group">
+                        <input type="checkbox" id="coreRoadsToggle" class="w-4 h-4 mr-3 accent-green-600">
+                        <span class="group-hover:text-green-700 transition-colors">Show Core Roads only</span>
+                    </label>
+                </div>
             </div>
         </div>
 
@@ -121,6 +187,12 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
+        // Global toggle function
+        function togglePanel() {
+            const panel = document.getElementById('controlPanel');
+            panel.classList.toggle('collapsed');
+        }
+
         window.onload = function() {
             // Setup Map
             const map = L.map('map', {
@@ -128,16 +200,8 @@
                 attributionControl: true
             }).setView([8.5, 124.5], 9);
 
-            let geoJsonLayer; // To store the road layer globally
-            let allRoadData = null; // To store raw GeoJSON data
-
-            // Define Custom Icon using peo.png
-            const customIcon = L.icon({
-                iconUrl: 'image/peo.png',
-                iconSize: [32, 32], 
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32]
-            });
+            let geoJsonLayer; 
+            let allRoadData = null; 
 
             // Layer Definitions
             const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -147,7 +211,7 @@
 
             const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                 maxZoom: 19,
-                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+                attribution: 'Tiles &copy; Esri'
             });
 
             let currentBaseMapLayer = osmLayer.addTo(map);
@@ -161,49 +225,42 @@
                     } else if (this.value === 'satellite') {
                         currentBaseMapLayer = satelliteLayer.addTo(map);
                     }
+                    // Auto-collapse on mobile after selection
+                    if (window.innerWidth <= 640) {
+                        document.getElementById('controlPanel').classList.add('collapsed');
+                    }
                 });
             });
 
-            // Core GeoJSON Loading and Filtering Function
             async function loadAndDisplayRoads(showCoreOnly = false) {
                 try {
-                    // Fetch data if not already cached
                     if (!allRoadData) {
                         const response = await fetch('roads.geojson');
                         if (!response.ok) throw new Error('Network response was not ok');
                         allRoadData = await response.json();
                     }
 
-                    // Remove existing layer if it exists
                     if (geoJsonLayer) {
                         map.eachLayer(layer => {
-                            // Cleanup both the visual layer and the hidden sensitivity layers
                             if (layer.options && (layer.options.sensitivity === true || layer === geoJsonLayer)) {
                                 map.removeLayer(layer);
                             }
                         });
                     }
 
-                    // Create filtered layer
                     geoJsonLayer = L.geoJson(allRoadData, {
                         filter: function(feature) {
                             if (!showCoreOnly) return true;
-                            // Filter by R_CORE attribute
                             return feature.properties && feature.properties.R_CORE === "Yes";
                         },
                         style: roadStyle,
                         onEachFeature: function (feature, layer) {
                             layer.bindPopup(roadPopup(feature.properties));
 
-                            // High-sensitivity click layer for roads
                             if (feature.geometry.type === "LineString" || feature.geometry.type === "MultiLineString") {
                                 const sensitivityLayer = L.geoJson(feature, {
-                                    sensitivity: true, // Custom tag for cleanup
-                                    style: {
-                                        weight: 24, 
-                                        opacity: 0,
-                                        interactive: true
-                                    }
+                                    sensitivity: true, 
+                                    style: { weight: 24, opacity: 0, interactive: true }
                                 }).addTo(map);
 
                                 sensitivityLayer.on('click', function(e) {
@@ -220,23 +277,20 @@
                         }
                     }).addTo(map);
 
-                    // Fit bounds only on initial load
                     if (!geoJsonLayer._initialFit) {
                         map.fitBounds(geoJsonLayer.getBounds());
                         geoJsonLayer._initialFit = true;
                     }
 
                 } catch (error) {
-                    console.error(`Error loading/filtering GeoJSON:`, error);
+                    console.error(`Error loading GeoJSON:`, error);
                 }
             }
 
-            // Filter Toggle Logic
             document.getElementById('coreRoadsToggle').addEventListener('change', function() {
                 loadAndDisplayRoads(this.checked);
             });
 
-            // Road Styling (Shades of Green)
             function roadStyle(feature) {
                 const roadName = feature.properties.R_NAME || 'Unknown';
                 let hash = 0;
@@ -246,7 +300,6 @@
                 const h = 80 + (Math.abs(hash) % 80); 
                 const s = 60 + (Math.abs(hash) % 30); 
                 const l = 30 + (Math.abs(hash) % 20); 
-                
                 return {
                     color: `hsl(${h}, ${s}%, ${l}%)`,
                     weight: 3.5,
@@ -255,19 +308,17 @@
                 };
             }
 
-            // Popup Formatting
             function roadPopup(properties) {
-                const length = properties.R_LENGTH ? parseFloat(properties.R_LENGTH).toFixed(2) : '0.00';
+                const lengthVal = properties.gis_LENGTH ? parseFloat(properties.gis_LENGTH).toFixed(2) : '0.00';
                 return `
                     <div class="flex flex-col gap-0 leading-tight">
                         <strong class="text-green-700 m-0 p-0 mb-1">Provincial Road</strong>
                         <span class="text-gray-700 m-0 p-0"><strong>Name:</strong> ${properties.R_NAME || 'Unnamed Road'}</span>
-                        <span class="text-gray-700 m-0 p-0"><strong>Length:</strong> ${length} km.</span>
+                        <span class="text-gray-700 m-0 p-0"><strong>Length:</strong> ${lengthVal} km.</span>
                     </div>
                 `;
             }
 
-            // Initial Load
             loadAndDisplayRoads(false);
         };
     </script>
