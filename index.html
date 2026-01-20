@@ -35,7 +35,6 @@
         .map-controls-overlay {
             position: absolute;
             top: 20px; 
-            /* Moved slightly right to avoid overlapping zoom buttons */
             left: 55px; 
             z-index: 1000;
             background: rgba(255, 255, 255, 0.95);
@@ -51,7 +50,7 @@
         /* Mobile Collapsed State */
         @media (max-width: 640px) {
             .map-controls-overlay {
-                left: 55px; /* Ensure clearance on mobile as well */
+                left: 55px; 
             }
             .map-controls-overlay.collapsed {
                 width: 44px;
@@ -75,13 +74,12 @@
         /* Desktop State */
         @media (min-width: 641px) {
             .map-controls-overlay {
-                left: 60px; /* More padding on desktop for a balanced look */
+                left: 60px; 
             }
             .map-controls-overlay .toggle-btn {
                 display: none;
             }
             .map-controls-overlay.collapsed {
-                /* Force expanded on desktop */
                 width: auto;
                 height: auto;
                 border-radius: 12px;
@@ -111,15 +109,14 @@
             z-index: 1001;
         }
 
-        /* Custom Popup Styling */
         .leaflet-popup-content-wrapper {
             border-radius: 8px;
             padding: 0px; 
         }
         .leaflet-popup-content {
-            font-size: 14px;
-            margin: 8px; 
-            line-height: 1.0; 
+            font-size: 13px;
+            margin: 12px; 
+            line-height: 1.4; 
         }
     </style>
     <!-- Leaflet CSS -->
@@ -251,7 +248,9 @@
                     geoJsonLayer = L.geoJson(allRoadData, {
                         filter: function(feature) {
                             if (!showCoreOnly) return true;
-                            return feature.properties && feature.properties.R_CORE === "Yes";
+                            // Checking both R_Core and R_CORE for compatibility
+                            const isCore = feature.properties.R_Core || feature.properties.R_CORE;
+                            return isCore === "Yes";
                         },
                         style: roadStyle,
                         onEachFeature: function (feature, layer) {
@@ -292,29 +291,60 @@
             });
 
             function roadStyle(feature) {
-                const roadName = feature.properties.R_NAME || 'Unknown';
-                let hash = 0;
-                for (let i = 0; i < roadName.length; i++) {
-                    hash = roadName.charCodeAt(i) + ((hash << 5) - hash);
-                }
-                const h = 80 + (Math.abs(hash) % 80); 
-                const s = 60 + (Math.abs(hash) % 30); 
-                const l = 30 + (Math.abs(hash) % 20); 
+                const props = feature.properties;
+                const total = parseFloat(props.RR_LENGTH) || 0;
+                const conc = parseFloat(props.RL_Conc) || 0;
+                
+                // Calculate ratio of concrete to total length
+                const ratio = total > 0 ? conc / total : 0;
+                
+                // Scale lightness from 70% (light green) down to 25% (dark green)
+                // A higher ratio results in a lower L value (darker)
+                const lValue = 75 - (ratio * 50); 
+                
                 return {
-                    color: `hsl(${h}, ${s}%, ${l}%)`,
+                    color: `hsl(140, 70%, ${lValue}%)`, // 140 is a "Forest Green" hue
                     weight: 3.5,
-                    opacity: 0.85,
+                    opacity: 0.9,
                     lineJoin: 'round'
                 };
             }
 
-            function roadPopup(properties) {
-                const lengthVal = properties.RR_LENGTH ? parseFloat(properties.RR_LENGTH).toFixed(2) : '0.00';
+            function roadPopup(props) {
+                // Formatting Length - Updated to RR_LENGTH
+                const lengthVal = props.RR_LENGTH ? parseFloat(props.RR_LENGTH).toFixed(2) : '0.00';
+                
+                // Segment formatting helper (skips if 0)
+                const formatSegment = (label, val) => {
+                    const num = parseFloat(val);
+                    if (!num || num === 0) return '';
+                    return `<div class="flex justify-between gap-4"><span>${label}:</span> <span class="font-medium text-gray-900">${num.toFixed(2)} km</span></div>`;
+                };
+
+                const segments = [
+                    formatSegment("Concrete", props.RL_Conc),
+                    formatSegment("Gravel", props.RL_Grav),
+                    formatSegment("Earth", props.RL_Earth)
+                ].filter(s => s !== "").join("");
+
                 return `
-                    <div class="flex flex-col gap-0 leading-tight">
-                        <strong class="text-green-700 m-0 p-0 mb-1">Provincial Road</strong>
-                        <span class="text-gray-700 m-0 p-0"><strong>Name:</strong> ${properties.R_NAME || 'Unnamed Road'}</span>
-                        <span class="text-gray-700 m-0 p-0"><strong>Length:</strong> ${lengthVal} km.</span>
+                    <div class="min-w-[190px]">
+                        <h3 class="text-green-700 font-bold border-b border-green-100 pb-1 mb-2 text-sm">Road Details</h3>
+                        <div class="space-y-1 text-gray-700">
+                            <div class="leading-tight mb-2">
+                                <span class="text-[10px] uppercase font-bold text-gray-400 block tracking-tight">Name</span>
+                                <span class="font-bold text-gray-900 leading-none">${props.R_NAME || 'Unnamed Road'}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Municipality:</span>
+                                <span class="font-medium">${props.RR_MUN || 'N/A'}</span>
+                            </div>
+                            <div class="flex justify-between border-t border-gray-100 pt-1 mt-1 font-bold text-gray-900">
+                                <span>Total Length:</span>
+                                <span>${lengthVal} km</span>
+                            </div>
+                            ${segments ? `<div class="mt-2 pt-1 border-t border-dashed border-gray-200 text-xs text-gray-500">${segments}</div>` : ""}
+                        </div>
                     </div>
                 `;
             }
