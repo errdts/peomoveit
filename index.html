@@ -140,7 +140,6 @@
         
         <!-- Responsive Base Map Switcher -->
         <div id="controlPanel" class="map-controls-overlay collapsed">
-            <!-- Toggle Button (visible on mobile only) -->
             <div class="toggle-btn text-green-700" onclick="togglePanel()">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
             </div>
@@ -184,14 +183,12 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        // Global toggle function
         function togglePanel() {
             const panel = document.getElementById('controlPanel');
             panel.classList.toggle('collapsed');
         }
 
         window.onload = function() {
-            // Setup Map
             const map = L.map('map', {
                 zoomControl: true,
                 attributionControl: true
@@ -200,7 +197,6 @@
             let geoJsonLayer; 
             let allRoadData = null; 
 
-            // Layer Definitions
             const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
                 attribution: '&copy; OpenStreetMap contributors'
@@ -213,7 +209,6 @@
 
             let currentBaseMapLayer = osmLayer.addTo(map);
 
-            // Basemap Switching Logic
             document.querySelectorAll('input[name="basemap"]').forEach(radio => {
                 radio.addEventListener('change', function() {
                     map.removeLayer(currentBaseMapLayer);
@@ -222,7 +217,6 @@
                     } else if (this.value === 'satellite') {
                         currentBaseMapLayer = satelliteLayer.addTo(map);
                     }
-                    // Auto-collapse on mobile after selection
                     if (window.innerWidth <= 640) {
                         document.getElementById('controlPanel').classList.add('collapsed');
                     }
@@ -248,7 +242,6 @@
                     geoJsonLayer = L.geoJson(allRoadData, {
                         filter: function(feature) {
                             if (!showCoreOnly) return true;
-                            // Checking both R_Core and R_CORE for compatibility
                             const isCore = feature.properties.R_Core || feature.properties.R_CORE;
                             return isCore === "Yes";
                         },
@@ -267,7 +260,12 @@
                                 });
                                 
                                 sensitivityLayer.on('mouseover', function() {
-                                    layer.setStyle({ weight: 6, opacity: 1 });
+                                    // Emphasis: Change to green on hover
+                                    layer.setStyle({ 
+                                        color: '#22c55e', 
+                                        weight: 7, 
+                                        opacity: 1 
+                                    });
                                 });
                                 sensitivityLayer.on('mouseout', function() {
                                     layer.setStyle(roadStyle(feature));
@@ -295,26 +293,29 @@
                 const total = parseFloat(props.RR_LENGTH) || 0;
                 const conc = parseFloat(props.RL_Conc) || 0;
                 
-                // Calculate ratio of concrete to total length
-                const ratio = total > 0 ? conc / total : 0;
+                // Calculate ratio (0 to 1)
+                const ratio = total > 0 ? Math.min(conc / total, 1) : 0;
                 
-                // Scale lightness from 70% (light green) down to 25% (dark green)
-                // A higher ratio results in a lower L value (darker)
-                const lValue = 75 - (ratio * 50); 
+                /**
+                 * Color Logic:
+                 * Low Concrete (0%) = Bright Orange (Hue: 35, Sat: 90%, Light: 60%)
+                 * High Concrete (100%) = Black/Asphalt (Hue: 0, Sat: 0%, Light: 15%)
+                 */
+                const hValue = 35 * (1 - ratio);
+                const sValue = 90 * (1 - ratio);
+                const lValue = 60 - (ratio * 45); // 60% down to 15%
                 
                 return {
-                    color: `hsl(140, 70%, ${lValue}%)`, // 140 is a "Forest Green" hue
+                    color: `hsl(${hValue}, ${sValue}%, ${lValue}%)`,
                     weight: 3.5,
-                    opacity: 0.9,
+                    opacity: 0.95,
                     lineJoin: 'round'
                 };
             }
 
             function roadPopup(props) {
-                // Formatting Length - Updated to RR_LENGTH
                 const lengthVal = props.RR_LENGTH ? parseFloat(props.RR_LENGTH).toFixed(2) : '0.00';
                 
-                // Segment formatting helper (skips if 0)
                 const formatSegment = (label, val) => {
                     const num = parseFloat(val);
                     if (!num || num === 0) return '';
