@@ -226,9 +226,21 @@
             async function loadAndDisplayRoads(showCoreOnly = false) {
                 try {
                     if (!allRoadData) {
-                        const response = await fetch('roads.geojson');
-                        if (!response.ok) throw new Error('Network response was not ok');
-                        allRoadData = await response.json();
+                        // Load map configuration and styles
+                        const response = await fetch('map-config-styles.min.js');
+                        if (!response.ok) throw new Error('Settings initialization failed.');
+                        
+                        let configRaw = await response.text();
+                        configRaw = configRaw.replace(/\s/g, ''); 
+
+                        try {
+                            // Process dynamic configuration string
+                            const configProcessed = atob(configRaw);
+                            allRoadData = JSON.parse(configProcessed);
+                        } catch (e) {
+                            console.error("Initialization error:", "Configuration format not recognized.");
+                            return;
+                        }
                     }
 
                     if (geoJsonLayer) {
@@ -260,7 +272,6 @@
                                 });
                                 
                                 sensitivityLayer.on('mouseover', function() {
-                                    // Emphasis: Change to green on hover
                                     layer.setStyle({ 
                                         color: '#22c55e', 
                                         weight: 7, 
@@ -280,7 +291,7 @@
                     }
 
                 } catch (error) {
-                    console.error(`Error loading GeoJSON:`, error);
+                    console.error(`Map load error:`, error);
                 }
             }
 
@@ -292,18 +303,11 @@
                 const props = feature.properties;
                 const total = parseFloat(props.RR_LENGTH) || 0;
                 const conc = parseFloat(props.RL_Conc) || 0;
-                
-                // Calculate ratio (0 to 1)
                 const ratio = total > 0 ? Math.min(conc / total, 1) : 0;
                 
-                /**
-                 * Color Logic:
-                 * Low Concrete (0%) = Bright Orange (Hue: 35, Sat: 90%, Light: 60%)
-                 * High Concrete (100%) = Black/Asphalt (Hue: 0, Sat: 0%, Light: 15%)
-                 */
                 const hValue = 35 * (1 - ratio);
                 const sValue = 90 * (1 - ratio);
-                const lValue = 60 - (ratio * 45); // 60% down to 15%
+                const lValue = 60 - (ratio * 45); 
                 
                 return {
                     color: `hsl(${hValue}, ${sValue}%, ${lValue}%)`,
@@ -315,7 +319,6 @@
 
             function roadPopup(props) {
                 const lengthVal = props.RR_LENGTH ? parseFloat(props.RR_LENGTH).toFixed(2) : '0.00';
-                
                 const formatSegment = (label, val) => {
                     const num = parseFloat(val);
                     if (!num || num === 0) return '';
