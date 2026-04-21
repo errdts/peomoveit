@@ -122,51 +122,171 @@
         /* Legend Styles */
         .map-legend {
             background: rgba(255, 255, 255, 0.95);
-            padding: 16px;
+            padding: 14px;
             border-radius: 12px;
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.5);
-            font-size: 13px;
+            font-size: 12px;
             line-height: 1.5;
-            min-width: 220px;
+            min-width: 200px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .map-legend h4 {
-            margin: 0 0 12px 0;
+        .legend-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            margin-bottom: 0;
+            gap: 8px;
+        }
+
+        .legend-header h4 {
+            margin: 0;
             font-weight: 700;
-            font-size: 14px;
+            font-size: 13px;
             color: #15803d;
-            border-bottom: 2px solid #dcfce7;
-            padding-bottom: 8px;
+            flex: 1;
+        }
+
+        .legend-toggle {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #15803d;
+            font-size: 18px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .legend-content {
+            display: block;
+            padding-top: 8px;
+        }
+
+        .map-legend.collapsed .legend-content {
+            display: none;
+        }
+
+        .map-legend.collapsed .legend-toggle {
+            transform: rotate(180deg);
         }
 
         .legend-item {
             display: flex;
             align-items: center;
-            margin-bottom: 10px;
-            gap: 10px;
+            margin-bottom: 8px;
+            gap: 8px;
+            font-size: 12px;
+            color: #333;
+        }
+
+        .legend-item div {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+            border: 1px solid #999;
+            flex-shrink: 0;
         }
 
         .legend-color-bar {
             width: 100%;
-            height: 20px;
+            height: 18px;
             border-radius: 4px;
             background: linear-gradient(to right, hsl(35, 90%, 60%), hsl(17.5, 45%, 37.5%), hsl(0, 0%, 15%));
             border: 1px solid #ccc;
-            margin: 12px 0;
+            margin: 10px 0 6px 0;
         }
 
         .legend-label {
             display: flex;
             justify-content: space-between;
-            font-size: 12px;
+            font-size: 10px;
             color: #666;
-            margin-top: 4px;
+            margin-bottom: 10px;
+            font-weight: 600;
         }
 
-        .legend-label span {
-            font-weight: 600;
-            color: #333;
+        /* Mobile Legend Styles */
+        @media (max-width: 640px) {
+            .map-legend {
+                padding: 10px 12px;
+                font-size: 11px;
+                min-width: auto;
+                bottom: 10px !important;
+                right: 10px !important;
+            }
+
+            .map-legend.collapsed {
+                padding: 8px 10px;
+                min-width: auto;
+                width: auto;
+                height: auto;
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+            }
+
+            .map-legend.collapsed .legend-header {
+                margin-bottom: 0;
+                gap: 4px;
+            }
+
+            .map-legend.collapsed .legend-header h4 {
+                margin: 0;
+            }
+
+            .legend-header h4 {
+                font-size: 11px;
+            }
+
+            .legend-toggle {
+                width: 18px;
+                height: 18px;
+            }
+
+            .legend-item {
+                margin-bottom: 6px;
+                font-size: 10px;
+                gap: 6px;
+            }
+
+            .legend-item div {
+                min-width: 12px;
+                width: 12px;
+                height: 12px;
+            }
+
+            .legend-color-bar {
+                height: 14px;
+                margin: 8px 0 4px 0;
+            }
+
+            .legend-label {
+                font-size: 9px;
+                margin-bottom: 8px;
+            }
+        }
+
+        /* Tablet Styles */
+        @media (min-width: 641px) and (max-width: 1024px) {
+            .map-legend {
+                padding: 12px;
+                font-size: 11px;
+                min-width: 190px;
+            }
+
+            .legend-header h4 {
+                font-size: 12px;
+            }
+
+            .legend-item {
+                font-size: 11px;
+            }
         }
     </style>
     <!-- Leaflet CSS -->
@@ -355,32 +475,60 @@
             legend.onAdd = function (map) {
                 const div = L.DomUtil.create('div', 'map-legend');
                 div.innerHTML = `
-                    <h4>Legend</h4>
-                    <div style="font-size: 12px; color: #666; margin-bottom: 8px;">Based on 2023 Road Inventory of Road Condition </div>
-                    <div class="legend-color-bar"></div>
-                    <div class="legend-label">
-                        <span>Poor (0%)</span>
-                        <span>Good (100%)</span>
+                    <div class="legend-header" onclick="toggleLegend(event)">
+                        <h4>Legend</h4>
+                        <div class="legend-toggle">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="4" y="3" width="3" height="3" fill="hsl(35, 90%, 60%)" stroke="none"/>
+                                <rect x="4" y="10" width="3" height="3" fill="hsl(17.5, 45%, 37.5%)" stroke="none"/>
+                                <rect x="4" y="17" width="3" height="3" fill="hsl(0, 0%, 15%)" stroke="none"/>
+                                <line x1="9" y1="4.5" x2="20" y2="4.5"/>
+                                <line x1="9" y1="11.5" x2="20" y2="11.5"/>
+                                <line x1="9" y1="18.5" x2="20" y2="18.5"/>
+                            </svg>
+                        </div>
                     </div>
-                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
+                    <div class="legend-content">
+                        <div style="font-size: 11px; color: #666; margin-bottom: 10px; line-height: 1.3;">
+                            <div style="margin-bottom: 4px; font-weight: 500;">Based on Road Status</div>
+                            <div style="font-size: 10px;">Source: PEO 2023 Provincial Road Inventory</div>
+                        </div>
                         <div class="legend-item">
-                            <div style="width: 16px; height: 16px; background: hsl(35, 90%, 60%); border-radius: 3px; border: 1px solid #999;"></div>
+                            <div style="background: hsl(35, 90%, 60%);"></div>
                             <span>No Concrete</span>
                         </div>
                         <div class="legend-item">
-                            <div style="width: 16px; height: 16px; background: hsl(17.5, 45%, 37.5%); border-radius: 3px; border: 1px solid #999;"></div>
+                            <div style="background: hsl(17.5, 45%, 37.5%);"></div>
                             <span>Partial Concrete</span>
                         </div>
                         <div class="legend-item">
-                            <div style="width: 16px; height: 16px; background: hsl(0, 0%, 15%); border-radius: 3px; border: 1px solid #999;"></div>
+                            <div style="background: hsl(0, 0%, 15%);"></div>
                             <span>Fully Concrete</span>
                         </div>
                     </div>
                 `;
+                L.DomEvent.disableClickPropagation(div);
                 return div;
             };
 
             legend.addTo(map);
+
+            // Toggle legend function - works on all screen sizes
+            window.toggleLegend = function(event) {
+                event.stopPropagation();
+                const legendElement = event.target.closest('.map-legend');
+                if (legendElement) {
+                    legendElement.classList.toggle('collapsed');
+                }
+            };
+
+            // Collapse legend on mobile load
+            if (window.innerWidth <= 640) {
+                const legendDiv = document.querySelector('.map-legend');
+                if (legendDiv) {
+                    legendDiv.classList.add('collapsed');
+                }
+            }
 
             function roadStyle(feature) {
                 const props = feature.properties;
