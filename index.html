@@ -118,6 +118,56 @@
             margin: 12px; 
             line-height: 1.4; 
         }
+
+        /* Legend Styles */
+        .map-legend {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            font-size: 13px;
+            line-height: 1.5;
+            min-width: 220px;
+        }
+
+        .map-legend h4 {
+            margin: 0 0 12px 0;
+            font-weight: 700;
+            font-size: 14px;
+            color: #15803d;
+            border-bottom: 2px solid #dcfce7;
+            padding-bottom: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            gap: 10px;
+        }
+
+        .legend-color-bar {
+            width: 100%;
+            height: 20px;
+            border-radius: 4px;
+            background: linear-gradient(to right, hsl(35, 90%, 60%), hsl(17.5, 45%, 37.5%), hsl(0, 0%, 15%));
+            border: 1px solid #ccc;
+            margin: 12px 0;
+        }
+
+        .legend-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        .legend-label span {
+            font-weight: 600;
+            color: #333;
+        }
     </style>
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -127,7 +177,7 @@
     <!-- Header -->
     <header class="app-header">
         <div class="flex items-center gap-2">
-            <span class="text-2xl">🛣️</span>
+            <span class="text-2xl"</span>
             <h1 class="text-lg sm:text-xl font-bold tracking-tight">Misamis Oriental Provincial Road Network</h1>
         </div>
         <div class="hidden md:block text-sm font-medium bg-green-900 px-3 py-1 rounded-full">
@@ -298,6 +348,39 @@
             document.getElementById('coreRoadsToggle').addEventListener('change', function() {
                 loadAndDisplayRoads(this.checked);
             });
+
+            // Create and add legend
+            const legend = L.control({ position: 'bottomright' });
+
+            legend.onAdd = function (map) {
+                const div = L.DomUtil.create('div', 'map-legend');
+                div.innerHTML = `
+                    <h4>Legend</h4>
+                    <div style="font-size: 12px; color: #666; margin-bottom: 8px;">Based on 2023 Road Inventory of Road Condition </div>
+                    <div class="legend-color-bar"></div>
+                    <div class="legend-label">
+                        <span>Poor (0%)</span>
+                        <span>Good (100%)</span>
+                    </div>
+                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
+                        <div class="legend-item">
+                            <div style="width: 16px; height: 16px; background: hsl(35, 90%, 60%); border-radius: 3px; border: 1px solid #999;"></div>
+                            <span>No Concrete</span>
+                        </div>
+                        <div class="legend-item">
+                            <div style="width: 16px; height: 16px; background: hsl(17.5, 45%, 37.5%); border-radius: 3px; border: 1px solid #999;"></div>
+                            <span>Partial Concrete</span>
+                        </div>
+                        <div class="legend-item">
+                            <div style="width: 16px; height: 16px; background: hsl(0, 0%, 15%); border-radius: 3px; border: 1px solid #999;"></div>
+                            <span>Fully Concrete</span>
+                        </div>
+                    </div>
+                `;
+                return div;
+            };
+
+            legend.addTo(map);
 
             function roadStyle(feature) {
                 const props = feature.properties;
