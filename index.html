@@ -334,6 +334,26 @@
                 </div>
 
                 <hr class="border-gray-200 mb-3">
+
+                <h3 class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Feature Layers</h3>
+                <div class="flex flex-col gap-2">
+                    <div class="flex items-center justify-between text-sm font-medium text-gray-700">
+                        <span>Provincial Roads</span>
+                        <button class="legend-eye-btn" data-layer="provincialRoads" onclick="toggleLayerVisibility(event)" style="background: none; border: none; cursor: pointer; padding: 0; color: #15803d; font-size: 16px; display: flex; align-items: center;">
+                            <svg class="eye-visible" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            <svg class="eye-hidden" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                        </button>
+                    </div>
+                    <div class="flex items-center justify-between text-sm font-medium text-gray-700">
+                        <span>Provincial Bridges</span>
+                        <button class="legend-eye-btn" data-layer="provincialBridges" onclick="toggleLayerVisibility(event)" style="background: none; border: none; cursor: pointer; padding: 0; color: #0891b2; font-size: 16px; display: flex; align-items: center;">
+                            <svg class="eye-visible" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            <svg class="eye-hidden" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <hr class="border-gray-200 mb-3">
                 
                 <h3 class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Filters</h3>
                 <div class="flex flex-col gap-2">
@@ -365,7 +385,14 @@
             }).setView([8.5, 124.5], 9);
 
             let geoJsonLayer; 
-            let allRoadData = null; 
+            let allRoadData = null;
+            let bridgesLayer = null;
+            let allBridgesData = null;
+            let layerVisibility = {
+                provincialRoads: true,
+                coreRoads: true,
+                provincialBridges: false
+            };
 
             const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
@@ -421,11 +448,26 @@
                         });
                     }
 
+                    if (!layerVisibility.provincialRoads && !layerVisibility.coreRoads) {
+                        return;
+                    }
+
                     geoJsonLayer = L.geoJson(allRoadData, {
                         filter: function(feature) {
-                            if (!showCoreOnly) return true;
                             const isCore = feature.properties.R_Core || feature.properties.R_CORE;
-                            return isCore === "Yes";
+                            
+                            // If provincial roads are hidden, show nothing
+                            if (!layerVisibility.provincialRoads) {
+                                return false;
+                            }
+                            
+                            // If core roads only checkbox is checked, show only core roads
+                            if (showCoreOnly) {
+                                return isCore === "Yes";
+                            }
+                            
+                            // Otherwise show all roads
+                            return true;
                         },
                         style: roadStyle,
                         onEachFeature: function (feature, layer) {
@@ -455,9 +497,9 @@
                         }
                     }).addTo(map);
 
-                    if (!geoJsonLayer._initialFit) {
+                    if (!window.roadsFitBoundsApplied) {
                         map.fitBounds(geoJsonLayer.getBounds());
-                        geoJsonLayer._initialFit = true;
+                        window.roadsFitBoundsApplied = true;
                     }
 
                 } catch (error) {
@@ -468,6 +510,73 @@
             document.getElementById('coreRoadsToggle').addEventListener('change', function() {
                 loadAndDisplayRoads(this.checked);
             });
+
+            async function loadAndDisplayBridges(showBridges = false) {
+                try {
+                    if (!allBridgesData) {
+                        const response = await fetch('bridge.geojson');
+                        if (!response.ok) throw new Error('Failed to load bridges.');
+                        allBridgesData = await response.json();
+                    }
+
+                    if (bridgesLayer) {
+                        map.removeLayer(bridgesLayer);
+                    }
+
+                    if (!showBridges) {
+                        return;
+                    }
+
+                    bridgesLayer = L.geoJson(allBridgesData, {
+                        pointToLayer: function(feature, latlng) {
+                            return L.marker(latlng, {
+                                icon: L.divIcon({
+                                    html: '<div style="width: 16px; height: 16px; background: #0891b2; border: 2px solid #0d7377; box-sizing: border-box; cursor: pointer;"></div>',
+                                    iconSize: [16, 16],
+                                    className: 'bridge-marker'
+                                })
+                            });
+                        },
+                        onEachFeature: function(feature, layer) {
+                            layer.bindPopup(bridgePopup(feature.properties));
+                        }
+                    }).addTo(map);
+
+                } catch (error) {
+                    console.error('Bridge load error:', error);
+                }
+            }
+
+            window.toggleLayerVisibility = function(event) {
+                event.preventDefault();
+                event.stopPropagation();
+                const btn = event.target.closest('button');
+                const layer = btn.dataset.layer;
+                
+                layerVisibility[layer] = !layerVisibility[layer];
+                
+                // Update eye icon visibility
+                const eyeVisible = btn.querySelector('.eye-visible');
+                const eyeHidden = btn.querySelector('.eye-hidden');
+                if (eyeVisible && eyeHidden) {
+                    if (layerVisibility[layer]) {
+                        eyeVisible.style.display = 'inline';
+                        eyeHidden.style.display = 'none';
+                        btn.style.opacity = '1';
+                    } else {
+                        eyeVisible.style.display = 'none';
+                        eyeHidden.style.display = 'inline';
+                        btn.style.opacity = '0.6';
+                    }
+                }
+                
+                // Reload layers based on visibility
+                if (layer === 'provincialRoads') {
+                    loadAndDisplayRoads(document.getElementById('coreRoadsToggle').checked);
+                } else if (layer === 'provincialBridges') {
+                    loadAndDisplayBridges(layerVisibility.provincialBridges);
+                }
+            };
 
             // Create and add legend
             const legend = L.control({ position: 'bottomright' });
@@ -505,6 +614,13 @@
                             <div style="background: hsl(0, 0%, 15%);"></div>
                             <span>Fully Concrete</span>
                         </div>
+                        <div style="border-top: 1px solid #ddd; margin-top: 8px; padding-top: 8px;">
+                            <div style="font-size: 11px; color: #666; margin-bottom: 6px; font-weight: 500;">Features</div>
+                            <div class="legend-item">
+                                <div style="width: 14px; height: 14px; background: #0891b2; border: 2px solid #0d7377;"></div>
+                                <span>Provincial Bridge</span>
+                            </div>
+                        </div>
                     </div>
                 `;
                 L.DomEvent.disableClickPropagation(div);
@@ -529,6 +645,30 @@
                     legendDiv.classList.add('collapsed');
                 }
             }
+
+            // Initialize layer visibility icons
+            setTimeout(() => {
+                const btns = document.querySelectorAll('.legend-eye-btn');
+                btns.forEach(btn => {
+                    const layer = btn.dataset.layer;
+                    const eyeVisible = btn.querySelector('.eye-visible');
+                    const eyeHidden = btn.querySelector('.eye-hidden');
+                    
+                    if (!layerVisibility[layer]) {
+                        if (eyeVisible && eyeHidden) {
+                            eyeVisible.style.display = 'none';
+                            eyeHidden.style.display = 'inline';
+                        }
+                        btn.style.opacity = '0.6';
+                    } else {
+                        if (eyeVisible && eyeHidden) {
+                            eyeVisible.style.display = 'inline';
+                            eyeHidden.style.display = 'none';
+                        }
+                        btn.style.opacity = '1';
+                    }
+                });
+            }, 100);
 
             function roadStyle(feature) {
                 const props = feature.properties;
@@ -579,6 +719,24 @@
                                 <span>${lengthVal} km</span>
                             </div>
                             ${segments ? `<div class="mt-2 pt-1 border-t border-dashed border-gray-200 text-xs text-gray-500">${segments}</div>` : ""}
+                        </div>
+                    </div>
+                `;
+            }
+
+            function bridgePopup(props) {
+                return `
+                    <div class="min-w-[200px]">
+                        <h3 class="text-cyan-700 font-bold border-b border-cyan-100 pb-1 mb-2 text-sm">Bridge Details</h3>
+                        <div class="space-y-1 text-gray-700">
+                            <div class="leading-tight mb-2">
+                                <span class="text-[10px] uppercase font-bold text-gray-400 block tracking-tight">Name</span>
+                                <span class="font-bold text-gray-900 leading-none">${props['newNAME OF BRIDGE'] || 'Unnamed Bridge'}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Municipality:</span>
+                                <span class="font-medium">${props['newMUNICIPALITY'] || 'N/A'}</span>
+                            </div>
                         </div>
                     </div>
                 `;
